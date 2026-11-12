@@ -33,7 +33,7 @@ test(`API-03 Verified expired token`, async ({ tokenManager, request }) => {
     expect(isTokenExpired(expiredToken)).toBe(true)
 
     const newToken = await tokenManager.getValidToken();
-    //step 6: Verify the new token
+
     expect(newToken).toBeDefined();
     expect(typeof newToken).toBe('string');
     expect(newToken).not.toBe(expiredToken);
