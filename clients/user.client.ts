@@ -7,7 +7,7 @@ export class UserClient extends BaseClient {
     private readonly endpoint = '/users';
 
     async createUser(payload: CreateUserRequest): Promise<APIResponse> {
-        return this.post(this.endpoint, payload)
+        return this.post(`${this.endpoint}/add`, payload)
     }
 
     async getSingleUsers(userId: number): Promise<APIResponse> {
@@ -40,12 +40,15 @@ export class UserClient extends BaseClient {
     }
     async createAndGetId(overrides: Partial<CreateUserRequest> = {}): Promise<number> {
         const res = await this.createUser(this.buildPayLoad(overrides));
-        if(res.status() !== 201){
-               throw new Error(
-            `Failed to create user. Status: ${res.status()}`
-        );
+        if (res.status() !== 201) {
+            throw new Error(
+                `Failed to create user. Status: ${res.status()}`
+            );
         }
         const body = (await res.json()) as UserResponse
+        if (typeof body.id !== 'number' || body.id <= 0) {
+            throw new Error(`Invalid user ID: ${body.id}`);
+        }
         return body.id
     }
 
