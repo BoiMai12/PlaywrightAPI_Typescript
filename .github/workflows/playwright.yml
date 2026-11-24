@@ -1,27 +1,92 @@
 name: Playwright Tests
 on:
+  # Tests main after merge, which confirms the combined code still passes
   push:
-    branches: [ main, master ]
+    branches: [ main ]
+  # Tests the PR before merge. Labels (run:smoke, run:e2e, run:regression) pick extra suites
   pull_request:
-    branches: [ main, master ]
+    branches: [ main ]
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+  # Manual run from the Actions tab: pick a suite, or give a spec file / grep to run exactly that
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: 'Test suite to run (ignored if spec or grep is set)'
+        type: choice
+        options: [smoke, regression, e2e, all]
+        default: smoke
+      spec:
+        description: 'Optional spec file(s), e.g. tests/products.spec.ts'
+        type: string
+        required: false
+      grep:
+        description: 'Optional grep, e.g. "@e2e" or "@smoke|@e2e"'
+        type: string
+        required: false
+      env:
+        description: 'Environment (loads ENV/.env.<name>)'
+        type: choice
+        options: [staging, dev]
+        default: staging
+
 jobs:
   test:
     timeout-minutes: 60
     runs-on: ubuntu-latest
+    env:
+      TEST_ENV: ${{ inputs.env || 'staging' }}
     steps:
     - uses: actions/checkout@v4
     - uses: actions/setup-node@v4
       with:
         node-version: lts/*
+        cache: npm
     - name: Install dependencies
       run: npm ci
-    - name: Install Playwright Browsers
-      run: npx playwright install --with-deps
-    - name: Run Playwright tests
-      run: npx playwright test
+
+    # Decide what to run. User-supplied values go through env vars (never inline in the script)
+    - name: Resolve test selection
+      env:
+        EVENT: ${{ github.event_name }}
+        IN_SUITE: ${{ inputs.suite }}
+        IN_SPEC: ${{ inputs.spec }}
+        IN_GREP: ${{ inputs.grep }}
+        PR_LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+      run: |
+        SPEC=""; GREP=""; SUITE="smoke"
+        if [ "$EVENT" = "workflow_dispatch" ]; then
+          if [ -n "$IN_SPEC" ] || [ -n "$IN_GREP" ]; then
+            SUITE="custom"; SPEC="$IN_SPEC"; GREP="$IN_GREP"
+          elif [ "$IN_SUITE" = "all" ]; then
+            SUITE="all"
+          else
+            SUITE="$IN_SUITE"; GREP="@$IN_SUITE"
+          fi
+        elif [ "$EVENT" = "pull_request" ]; then
+          # collect labels like run:e2e -> @e2e ; default to smoke
+          for l in ${PR_LABELS//,/ }; do
+            case "$l" in run:smoke|run:regression|run:e2e) GREP="${GREP:+$GREP|}@${l#run:}";; esac
+          done
+          [ -z "$GREP" ] && GREP="@smoke"
+          SUITE="pr"
+        else
+          SUITE="regression"; GREP="@regression"
+        fi
+        echo "SUITE=$SUITE" >> "$GITHUB_ENV"
+        echo "SPEC=$SPEC" >> "$GITHUB_ENV"
+        echo "GREP=$GREP" >> "$GITHUB_ENV"
+        echo "Running: suite=$SUITE spec='$SPEC' grep='$GREP'"
+
+    # API tests use the request fixture only, so browsers are not needed
+    - name: Run Playwright tests (${{ env.SUITE }})
+      run: |
+        ARGS=()
+        [ -n "$SPEC" ] && read -r -a ARGS <<< "$SPEC"
+        [ -n "$GREP" ] && ARGS+=(--grep "$GREP")
+        npx playwright test "${ARGS[@]}"
     - uses: actions/upload-artifact@v4
       if: ${{ !cancelled() }}
       with:
-        name: playwright-report
+        name: playwright-report-${{ env.SUITE }}
         path: playwright-report/
         retention-days: 30

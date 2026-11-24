@@ -4,7 +4,7 @@ import { test, expect } from '../fixtures/api.fixture';
 import { CreateProductRequest } from '../models/product.model';
 
 test.describe(`verify Product API /product`, async() => {
-test(`Get product by Id`, async ({ productClient }) => {
+test(`Get product by Id`, {tag: '@smoke'}, async ({ productClient }) => {
 
     const res = await productClient.getProductById(1);
 
@@ -17,7 +17,7 @@ test(`Get product by Id`, async ({ productClient }) => {
     expect(body.price).toEqual(expect.any(Number));
 })
 
-test(`Create product`, async ({ productClient }) => {
+test(`Create product`,{tag: ['@smoke', '@regression']}, async ({ productClient }) => {
     const timestamp = Date.now();
     const payload: CreateProductRequest = {
         title: `Product_Title_${timestamp}`,
@@ -40,7 +40,7 @@ test(`Create product`, async ({ productClient }) => {
 
 })
 
-test(`Product: search project name`, async ({ productClient }) => {
+test(`Product: search project name`, {tag: '@regression'} ,async ({ productClient }) => {
     const searchKey = 'Lipstick'
     const res = await productClient.searchProduct(searchKey);
     expect(res.status()).toBe(200);
@@ -59,7 +59,7 @@ test(`Product: search project name`, async ({ productClient }) => {
 
 })
 
-test(`Product: Check list product in limit and skip`, async ({ productClient }) => {
+test(`Product: Check list product in limit and skip`, {tag: '@regression'}, async ({ productClient }) => {
     const res = await productClient.getNextPage(5, 10)
     console.log('Request URL:', res.url());
     expect(res.status()).toBe(200);
