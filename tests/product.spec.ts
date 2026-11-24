@@ -1,8 +1,9 @@
 import { request } from '@playwright/test';
 import { ProductClient } from '../clients/product.client';
-import { test, expect } from '../fixtures/test.fixture';
+import { test, expect } from '../fixtures/api.fixture';
 import { CreateProductRequest } from '../models/product.model';
 
+test.describe(`verify Product API /product`, async() => {
 test(`Get product by Id`, async ({ productClient }) => {
 
     const res = await productClient.getProductById(1);
@@ -73,3 +74,5 @@ test(`Product: Check list product in limit and skip`, async ({ productClient }) 
     expect(body.limit).toBe(5);
 
 })
+})
+

@@ -1,5 +1,7 @@
-import { test, expect } from '../fixtures/auth.worker.fixture';
-import { isTokenExpired } from '../helpers/token.managers';
+import { test, expect } from '../fixtures/api.fixture';
+import { TokenManager } from '../helpers/token.managers';
+
+test.describe(`Check token management`, async() => {
 
 test(`API-01 test token`, async ({ tokenManager }) => {
     const token = await tokenManager.getValidToken();
@@ -19,7 +21,7 @@ test(`API-02 Reuse token`, async ({ tokenManager }) => {
 
 })
 
-test(`API-03 Verified expired token`, async ({ tokenManager, request }) => {
+test(`API-03 Verified expired token`, async ({ tokenManager, getProfileClient }) => {
     tokenManager.clearTokenCached()
     const expiredPayLoad = {
         exp: Math.floor(Date.now() / 1000) - 3600
@@ -30,32 +32,26 @@ test(`API-03 Verified expired token`, async ({ tokenManager, request }) => {
         'fake-signature'
     ].join('.');
 
-    expect(isTokenExpired(expiredToken)).toBe(true)
+    expect(TokenManager.isTokenExpired(expiredToken)).toBe(true)
 
+    // Put the expired token in the cache so getValidToken() has to refresh it
+    tokenManager.setCachedToken(expiredToken);
     const newToken = await tokenManager.getValidToken();
 
     expect(newToken).toBeDefined();
     expect(typeof newToken).toBe('string');
     expect(newToken).not.toBe(expiredToken);
-    expect(isTokenExpired(newToken)).toBe(false);
+    expect(TokenManager.isTokenExpired(newToken)).toBe(false);
 
-    const response = await request.get('/auth/me', {
-        headers: {
-            Authorization: `Bearer ${newToken}`
-        }
-    })
-    expect(response.status()).toBe(200);
+    const res = await getProfileClient.getProfile()
+    expect(res.status()).toBe(200);
 
 })
 
-test(`API-04 User token to get user`, async ({ tokenManager, request }) => {
+test(`API-04 User token to get user`, async ({ tokenManager, getProfileClient }) => {
     tokenManager.clearTokenCached()
     const token = await tokenManager.getValidToken();
-    const response = await request.get('/auth/me', {
-        headers: {
-            Authorization: `Bearer ${token}`
-        }
-    })
+    const response = await getProfileClient.getProfile();
     expect(response.status()).toBe(200);
     const body = await response.json();
     console.log(`body: ${body}`)
@@ -66,4 +62,5 @@ test(`API-04 User token to get user`, async ({ tokenManager, request }) => {
         }
     )
 
+})
 })

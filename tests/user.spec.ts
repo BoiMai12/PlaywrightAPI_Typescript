@@ -1,4 +1,4 @@
-import { test, expect } from '../fixtures/test.fixture';
+import { test, expect } from '../fixtures/api.fixture';
 import { CreateUserRequest } from '../models/user.model'
 test('API-01 Get user by ID', async ({ userClient }) => {
 

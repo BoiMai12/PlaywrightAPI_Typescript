@@ -1,57 +1,68 @@
 import { APIRequestContext, APIResponse  } from "@playwright/test";
-import type { createTokenManager } from '../helpers/token.managers';
+import type { TokenManager } from '../helpers/token.managers';
 
 
-type TokenManager = ReturnType<typeof createTokenManager>;
+
+export type AuthMode =
+    | { type: 'default' }            // use TokenManager token
+    | { type: 'none' }               // send no Authorization header
+    | { type: 'custom'; token: string }; // send whatever token you want (invalid/expired)
+
+export interface RequestOptions {
+    auth?: AuthMode;
+    headers?: Record<string, string>;
+}
+
 type QueryParams = Record<string, string | number | boolean>;
 
 export class BaseClient{
     constructor(
-        protected request: APIRequestContext,
-        protected tokenManager?: TokenManager
-    ){}
-    private async getHeades(
-        customHeaders: Record<string, string> = {}
+        protected readonly request: APIRequestContext,
+        protected readonly tokenManager: TokenManager,
+    ) {}
+    protected async buildHeaders(
+        options: RequestOptions = {}
     ): Promise<Record<string,string>>{
-        if(!this.tokenManager){
-            return customHeaders
+        const auth = options.auth ?? {type: 'default'};
+        const headers: Record<string, string> = { ...options.headers };
+        if(auth.type === 'default'){
+            headers['Authorization'] = `Bearer ${await this.tokenManager.getValidToken()}`;
+        } else if (auth.type === 'custom'){
+            headers['Authorization'] = `Bearer ${auth.token}`
         }
-        const token = await this.tokenManager.getValidToken();
-        return{
-            Authorization: `Bearer ${token}`,
-            ...customHeaders,
-        }
+        return headers;
+ 
     }
 
     protected async get(
         url:string, 
         params?: QueryParams,
-        headers?: Record<string, string>
+        options?: RequestOptions
     ){
         return this.request.get(url, {
             params,
-            headers: await this.getHeades(headers)
+            headers: await this.buildHeaders(options)
         });
     }
 
-    protected async post<T>(url: string, data?:T, headers?: Record<string, string>){
+    protected async post<T>(url: string, data?:T, options?: RequestOptions){
         return this.request.post(url, {data,
-            headers: await this.getHeades(headers)
+            headers: await this.buildHeaders(options)
         });
     }
 
-    protected async put<T>(url: string, data?:T, headers?: Record<string, string>){
+    protected async put<T>(url: string, data?:T, options?: RequestOptions){
         return this.request.put(url, {data,
-            headers: await this.getHeades(headers)
+            headers: await this.buildHeaders(options)
         })
     }
 
       protected async delete<T>(url: string,
-            headers?: Record<string, string>
+            options?: RequestOptions
 
       ){
         return this.request.delete(url,{
-            headers: await this.getHeades(headers)
+            headers: await this.buildHeaders(options)
         }
 
         )
