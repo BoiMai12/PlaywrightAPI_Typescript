@@ -1,45 +1,44 @@
 import type { APIRequestContext } from "@playwright/test";
 import { loginAndGetToken } from "./auth.helper";
 
-export function isTokenExpired(token: string): boolean {
-    try {
-        const payload = JSON.parse(
-            Buffer.from(token.split('.')[1], 'base64url').toString('utf8')
-        );
 
-        const currentTime = Math.floor(Date.now() / 1000);
+export class TokenManager {
+    private cachedToken?: string | undefined
+    constructor(private readonly request: APIRequestContext) { }
 
-        return (
-            typeof payload.exp !== 'number' ||
-            currentTime >= payload.exp - 30
-        );
-    } catch {
-        return true;
-    }
-}
+    static isTokenExpired(token: string): boolean {
+        try {
+            const payload = JSON.parse(
+                Buffer.from(token.split('.')[1], 'base64url').toString('utf8')
+            );
 
-export function createTokenManager(request: APIRequestContext) {
-    let cachedToken: string | undefined;
+            const currentTime = Math.floor(Date.now() / 1000);
 
-    function clearTokenCached(): void {
-        cachedToken = undefined;
-    }
-
-    function setCachedToken(token: string): void {
-        cachedToken = token;
-    }
-
-    async function getValidToken(): Promise<string> {
-        if (!cachedToken || isTokenExpired(cachedToken)) {
-            cachedToken = await loginAndGetToken(request)
+            return (
+                typeof payload.exp !== 'number' ||
+                currentTime >= payload.exp - 30
+            );
+        } catch {
+            return true;
         }
-        return cachedToken;
     }
-    return{
-        getValidToken,
-        clearTokenCached,
-        setCachedToken,
-        isTokenExpired
+
+    clearTokenCached(): void {
+        this.cachedToken = undefined;
     }
+
+    setCachedToken(token: string): void {
+        this.cachedToken = token;
+    }
+
+    async  getValidToken(): Promise<string> {
+        if (!this.cachedToken || TokenManager.isTokenExpired(this.cachedToken)) {
+            this.cachedToken = await loginAndGetToken(this.request)
+        }
+        return this.cachedToken;
+    }
+
 }
+
+
 
