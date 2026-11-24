@@ -3,7 +3,7 @@ import { TokenManager } from '../helpers/token.managers';
 
 test.describe(`Check token management`, async() => {
 
-test(`API-01 test token`, async ({ tokenManager }) => {
+test(`API-01 test token`, { tag: ['@smoke', '@regression'] }, async ({ tokenManager }) => {
     const token = await tokenManager.getValidToken();
     expect(token).toBeDefined();
     expect(typeof token).toBe('string');
@@ -12,7 +12,7 @@ test(`API-01 test token`, async ({ tokenManager }) => {
 })
 
 
-test(`API-02 Reuse token`, async ({ tokenManager }) => {
+test(`API-02 Reuse token`, { tag: '@regression' }, async ({ tokenManager }) => {
     tokenManager.clearTokenCached()
     const token1 = await tokenManager.getValidToken();
     const token2 = await tokenManager.getValidToken();
@@ -21,7 +21,7 @@ test(`API-02 Reuse token`, async ({ tokenManager }) => {
 
 })
 
-test(`API-03 Verified expired token`, async ({ tokenManager, getProfileClient }) => {
+test(`API-03 Verified expired token`, { tag: ['@regression', '@e2e'] }, async ({ tokenManager, getProfileClient }) => {
     tokenManager.clearTokenCached()
     const expiredPayLoad = {
         exp: Math.floor(Date.now() / 1000) - 3600
@@ -48,7 +48,7 @@ test(`API-03 Verified expired token`, async ({ tokenManager, getProfileClient })
 
 })
 
-test(`API-04 User token to get user`, async ({ tokenManager, getProfileClient }) => {
+test(`API-04 User token to get user`, { tag: ['@regression', '@e2e'] }, async ({ tokenManager, getProfileClient }) => {
     tokenManager.clearTokenCached()
     const token = await tokenManager.getValidToken();
     const response = await getProfileClient.getProfile();

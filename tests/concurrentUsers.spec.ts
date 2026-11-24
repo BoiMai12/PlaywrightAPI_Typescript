@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 import { getUserIds, getUserIdsSettled } from '../helpers/getusers_Promise.helper'
 
 // only verify for passes cases
-test(`API-01current user request`, async ({ request }) => {
+test(`API-01current user request`, { tag: '@regression' }, async ({ request }) => {
     const userIds = [1, 2, 5];
     await Promise.all(
         userIds.map(async (id) => {
@@ -15,7 +15,7 @@ test(`API-01current user request`, async ({ request }) => {
     )
 })
 // best approach for Playwright automation
-test(`API-02 Concurrent get users - using driven data`, async ({ request }) => {
+test(`API-02 Concurrent get users - using driven data`, { tag: '@regression' }, async ({ request }) => {
     const testcases = [
         { userId: 1, expectedStatus: 200 },
         { userId: 2, expectedStatus: 200 },
@@ -44,7 +44,7 @@ test(`API-02 Concurrent get users - using driven data`, async ({ request }) => {
 //purpose understand the Promise.all and Promise.allSettled
 
 
-test(`Get multiple users`, async ({ request }) => {
+test(`Get multiple users`, { tag: '@regression' }, async ({ request }) => {
     const expectedIds = [1, 3, 4]
     const acutalIds = await getUserIds(request, expectedIds);
     console.log(`Using promise.all for userId`,acutalIds)
@@ -52,7 +52,7 @@ test(`Get multiple users`, async ({ request }) => {
     expect(acutalIds).toEqual(expectedIds)
 })
 
-test(`Get multiple users using allSettled`, async ({ request }) => {
+test(`Get multiple users using allSettled`, { tag: '@regression' }, async ({ request }) => {
     const userIds = [1, 3, 9999]
     const results = await getUserIdsSettled(request, userIds);
     const rejectUsers = results.map((result, index) => ({

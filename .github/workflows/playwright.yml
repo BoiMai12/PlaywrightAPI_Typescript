@@ -1,27 +1,52 @@
 name: Playwright Tests
 on:
+  # Tests main after merge, which confirms the combined code still passes
   push:
-    branches: [ main, master ]
+    branches: [ main ]
+  # Tests the PR before merge, so you catch failures early and can block bad merges.
   pull_request:
-    branches: [ main, master ]
+    branches: [ main ]
+  # Manual run from the Actions tab: pick the suite and the environment
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: 'Test suite to run'
+        type: choice
+        options: [smoke, regression, e2e, all]
+        default: smoke
+      env:
+        description: 'Environment (loads ENV/.env.<name>)'
+        type: choice
+        options: [staging, dev]
+        default: staging
+
 jobs:
   test:
     timeout-minutes: 60
     runs-on: ubuntu-latest
+    env:
+      TEST_ENV: ${{ inputs.env || 'staging' }}
+      # PRs run smoke only, push to main runs regression, manual runs use the chosen suite
+      SUITE: ${{ inputs.suite || (github.event_name == 'pull_request' && 'smoke') || 'regression' }}
     steps:
     - uses: actions/checkout@v4
     - uses: actions/setup-node@v4
       with:
         node-version: lts/*
+        cache: npm
     - name: Install dependencies
       run: npm ci
-    - name: Install Playwright Browsers
-      run: npx playwright install --with-deps
-    - name: Run Playwright tests
-      run: npx playwright test
+    # API tests use the request fixture only, so browsers are not needed
+    - name: Run Playwright tests (${{ env.SUITE }})
+      run: |
+        if [ "$SUITE" = "all" ]; then
+          npx playwright test
+        else
+          npx playwright test --grep "@$SUITE"
+        fi
     - uses: actions/upload-artifact@v4
       if: ${{ !cancelled() }}
       with:
-        name: playwright-report
+        name: playwright-report-${{ env.SUITE }}
         path: playwright-report/
         retention-days: 30
